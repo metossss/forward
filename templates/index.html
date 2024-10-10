@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS Forwarder Management Panel</title>
+        <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f4f4f4; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background-color: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+        }
+        .header {
+            position: relative;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1 { 
+            color: #333; 
+            margin: 0;
+            display: inline-block;
+        }
+        h2 {
+            margin-top: 20px;
+        }
+        button { 
+            margin: 5px; 
+            padding: 10px 15px; 
+            cursor: pointer; 
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        .start { background-color: #4CAF50; }
+        .stop { background-color: #f44336; }
+        .restart { background-color: #ff9800; }
+        .mode, .update-button { background-color: #2196F3; }
+        .custom-dns { background-color: #039eba; }
+        .logout-button {
+            background-color: #f44336;
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        textarea, input[type="text"] { 
+            width: 100%; 
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 200px;
+        }
+        .status-panel, .ip-management {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .status-label {
+            font-weight: bold;
+            margin-right: 10px;
+            width: 120px;
+        }
+        .status-value {
+            padding: 5px 10px;
+            border-radius: 15px;
+            color: white;
+            font-weight: bold;
+            display: inline-block;
+            min-width: 100px;
+            text-align: center;
+        }
+        .running, .active { background-color: #4CAF50; }
+        .stopped, .inactive { background-color: #f44336; }
+        .shekan { background-color: #2196F3; }
+        .radar { background-color: #3F51B5; }
+        .anti403 { background-color: #9C27B0; }
+        .custom, .dns-allow-all { background-color: #607D8B; }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .message {
+                position: fixed;
+        	bottom: 20px;
+        	left: 50%;
+        	transform: translateX(-50%);
+        	z-index: 1000;
+        	padding: 10px;
+        	border-radius: 5px;
+        	display: none;
+        }
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        #customDNSModal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 400px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+        }
+        .dns-servers {
+            color: #333;
+            font-weight: bold;
+        }
+        .ip-restriction-active { 
+            background-color: #4CAF50;
+        }
+        .ip-restriction-inactive { 
+            background-color: #f44336;
+        }
+        #allowed_ips {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>DNS Forwarder Management Panel</h1>
+            <button class="logout-button" onclick="logout()">Logout</button>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <div class="status-panel">
+            <div class="status-item">
+                <span class="status-label">Status:</span>
+                <span id="status-value" class="status-value"></span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Mode:</span>
+                <span id="mode-value" class="status-value"></span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">DNS Servers:</span>
+                <span id="dns-servers-value" class="dns-servers"></span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">IP Restriction:</span>
+                <span id="ip-restriction-value" class="status-value"></span>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="start" onclick="toggleService('start')">Start</button>
+            <button class="stop" onclick="toggleService('stop')">Stop</button>
+            <button class="restart" onclick="toggleService('restart')">Restart</button>
+            <button class="mode" onclick="setDNS('shekan')">Set Shekan DNS</button>
+            <button class="mode" onclick="setDNS('radar')">Set Radar DNS</button>
+            <button class="mode" onclick="setDNS('anti403')">Set Anti403 DNS</button>
+            <button class="custom-dns" onclick="showCustomDNSModal()">Set Custom DNS</button>
+        </div>
+
+        <div class="section">
+            <h2 style="text-align: center;">IP Restriction Management</h2>
+            <button id="ip-restriction-toggle" onclick="toggleIPRestriction()">Toggle IP Restriction</button>
+            <h3>Allowed IPs:</h3>
+            <textarea id="allowed_ips"></textarea>
+            <button class="update-button" onclick="updateAllowedIPs()">Update Allowed IPs</button>
+        </div>
+    </div>
+
+    <div id="customDNSModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="hideCustomDNSModal()">&times;</span>
+            <h2>Set Custom DNS</h2>
+            <input type="text" id="primaryDNS" placeholder="Primary DNS">
+            <input type="text" id="secondaryDNS" placeholder="Secondary DNS (optional)">
+            <button class="custom-dns" onclick="setCustomDNS()">Set Custom DNS</button>
+        </div>
+    </div>
+
+<script>
+    function showMessage(type, text) {
+        const messageDiv = document.getElementById('message');
+        messageDiv.className = 'message ' + type;
+        messageDiv.textContent = text;
+        messageDiv.style.display = 'block';
+
+        setTimeout(() => {
+            messageDiv.style.display = 'none';
+        }, 10000);
+    }
+
+    function updateStatus() {
+        fetch('/api/status')
+            .then(response => response.json())
+            .then(data => {
+                const statusValue = document.getElementById('status-value');
+                const modeValue = document.getElementById('mode-value');
+                const dnsServersValue = document.getElementById('dns-servers-value');
+                const ipRestrictionValue = document.getElementById('ip-restriction-value');
+                
+                statusValue.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+                statusValue.className = 'status-value ' + (data.status === 'active' ? 'running' : 'stopped');
+                
+                modeValue.textContent = data.mode;
+                modeValue.className = 'status-value ' + data.mode.toLowerCase();
+
+                dnsServersValue.textContent = data.dns_servers.join(', ');
+
+                ipRestrictionValue.textContent = data.ip_restriction ? 'Enabled' : 'Disabled';
+                ipRestrictionValue.className = 'status-value ' + (data.ip_restriction ? 'running' : 'stopped');
+
+                const ipRestrictionToggle = document.getElementById('ip-restriction-toggle');
+                if (data.ip_restriction) {
+                    ipRestrictionToggle.textContent = 'Disable IP Restriction';
+                    ipRestrictionToggle.className = 'ip-restriction-active';
+                } else {
+                    ipRestrictionToggle.textContent = 'Enable IP Restriction';
+                    ipRestrictionToggle.className = 'ip-restriction-inactive';
+                }
+
+                let allowedIPs = data.allowed_ips.join('\n');
+                if (allowedIPs.endsWith('}')) {
+                    allowedIPs = allowedIPs.slice(0, -1);
+                }
+                document.getElementById('allowed_ips').value = allowedIPs;
+            });
+    }
+
+    function toggleService(action) {
+        fetch('/api/toggle', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: action})
+        })
+        .then(response => {
+            if(response.ok){
+                updateStatus();
+                showMessage('success', `Service ${action}ed successfully`);
+            } else {
+                showMessage('error', `Failed to ${action} service`);
+            }
+        })
+        .catch(() => {
+            showMessage('error', `An error occurred while ${action}ing service`);
+        });
+    }
+
+    function setDNS(mode) {
+        fetch('/api/set_dns', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({mode: mode})
+        })
+        .then(response => {
+            if(response.ok){
+                updateStatus();
+                showMessage('success', `DNS set to ${mode} mode successfully`);
+            } else {
+                showMessage('error', `Failed to set DNS to ${mode} mode`);
+            }
+        })
+        .catch(() => {
+            showMessage('error', `An error occurred while setting DNS to ${mode} mode`);
+        });
+    }
+
+    function showCustomDNSModal() {
+        document.getElementById('customDNSModal').style.display = 'block';
+    }
+
+    function hideCustomDNSModal() {
+        document.getElementById('customDNSModal').style.display = 'none';
+    }
+
+    function setCustomDNS() {
+        const primaryDNS = document.getElementById('primaryDNS').value;
+        const secondaryDNS = document.getElementById('secondaryDNS').value;
+        const customDNS = [primaryDNS];
+        if (secondaryDNS) {
+            customDNS.push(secondaryDNS);
+        }
+
+        fetch('/api/set_dns', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({mode: 'custom', custom_dns: customDNS})
+        })
+        .then(response => {
+            if(response.ok){
+                updateStatus();
+                hideCustomDNSModal();
+                showMessage('success', 'Custom DNS set successfully');
+            } else {
+                showMessage('error', 'Failed to set custom DNS');
+            }
+        })
+        .catch(() => {
+            showMessage('error', 'An error occurred while setting custom DNS');
+        });
+    }
+
+    function toggleIPRestriction() {
+        fetch('/api/toggle_ip_restriction', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            updateStatus();
+            showMessage('success', `IP restriction ${data.ip_restriction ? 'enabled' : 'disabled'}`);
+        })
+        .catch(() => {
+            showMessage('error', 'An error occurred while toggling IP restriction');
+        });
+    }
+
+    function updateAllowedIPs() {
+        let ips = document.getElementById('allowed_ips').value.split('\n').filter(ip => ip.trim() !== '');
+        if (ips[ips.length - 1] !== '}') {
+            ips.push('}');
+        }
+        fetch('/api/update_allowed_ips', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ips: ips})
+        })
+        .then(response => response.json())
+        .then(data => {
+            updateStatus();
+            showMessage('success', 'Allowed IPs updated successfully');
+        })
+        .catch(() => {
+            showMessage('error', 'An error occurred while updating allowed IPs');
+        });
+    }
+
+    function logout() {
+        window.location.href = '/logout';
+    }
+
+    updateStatus();
+    setInterval(updateStatus, 5000);
+</script>
+</body>
+</html>
