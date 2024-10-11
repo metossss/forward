@@ -14,7 +14,7 @@ sudo rm -f /etc/bind/allowed-ips.acl
 
 # Update system packages
 sudo apt-get update
-sudo apt-get install -y bind9 bind9utils bind9-doc python3 python3-pip
+sudo apt-get install -y bind9 bind9utils bind9-doc python3 python3-pip git
 
 # Install Flask
 sudo pip3 install flask
@@ -54,6 +54,29 @@ options {
     recursive-clients 10000;
 };
 EOF'
+
+# New method to clone or update the repository
+REPO_URL="https://github.com/smaghili/dnsforwarder.git"
+INSTALL_DIR="/opt/dnsforwarder"
+SCRIPT_PATH="/usr/local/bin/dnsforwarder"
+
+# Function to clone or update the repository and set up the script
+setup_dns_proxy() {
+    if [ ! -d "$INSTALL_DIR" ]; then
+        sudo git clone "$REPO_URL" "$INSTALL_DIR"
+    else
+        (cd "$INSTALL_DIR" && sudo git pull)
+    fi
+    sudo cp "$INSTALL_DIR/dns_proxy.py" "$SCRIPT_PATH"
+    sudo chmod +x "$SCRIPT_PATH"
+    echo "DNS Forwarder repository setup completed."
+}
+
+# Call the setup function
+setup_dns_proxy
+
+# The rest of the script remains unchanged
+# ...
 
 # Create the dnsforwarder control script
 sudo bash -c 'cat > /usr/local/bin/dnsforwarder << EOF
@@ -223,19 +246,19 @@ ADMIN_PASSWORD = '$ADMIN_PASSWORD'
 EOF"
 
 # Copy existing web panel files
-sudo cp webpanel.py /opt/dns-panel/
+sudo cp $INSTALL_DIR/webpanel.py /opt/dns-panel/
 sudo mkdir -p /opt/dns-panel/templates
-sudo cp templates/index.html /opt/dns-panel/templates/
-sudo cp templates/login.html /opt/dns-panel/templates/
+sudo cp $INSTALL_DIR/templates/index.html /opt/dns-panel/templates/
+sudo cp $INSTALL_DIR/templates/login.html /opt/dns-panel/templates/
 
 # Verify that files were copied successfully
 if [ ! -f "/opt/dns-panel/webpanel.py" ]; then
-    echo "ERROR: Failed to copy webpanel.py. Please make sure the file exists in the current directory."
+    echo "ERROR: Failed to copy webpanel.py. Please make sure the file exists in the repository."
     exit 1
 fi
 
 if [ ! -f "/opt/dns-panel/templates/index.html" ] || [ ! -f "/opt/dns-panel/templates/login.html" ]; then
-    echo "ERROR: Failed to copy HTML template files. Please make sure the files exist in the ./templates/ directory."
+    echo "ERROR: Failed to copy HTML template files. Please make sure the files exist in the repository."
     exit 1
 fi
 
