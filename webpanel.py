@@ -58,7 +58,11 @@ def get_status():
     ip_restriction = "allow-query { allowed_ips; };" in config_content
     
     with open(ALLOWED_IPS_FILE, "r") as f:
-        allowed_ips = [line.strip().rstrip(";") for line in f if line.strip() and not line.startswith("acl") and line.strip() != "}"]
+        allowed_ips = [line.strip().rstrip(";") for line in f if line.strip() and not line.startswith("acl") and line.strip() != "}" and line.strip() != "{"]
+    
+    # Add a closing brace if it's not already there
+    if allowed_ips and allowed_ips[-1] != "}":
+        allowed_ips.append("}")
 
     return jsonify({
         "status": status,
@@ -128,16 +132,29 @@ def update_allowed_ips():
 
     ips = request.json["ips"]
     try:
+        # Remove any empty lines and the closing brace if present
+        ips = [ip.strip() for ip in ips if ip.strip() and ip.strip() != "}"]
+        
         with open(ALLOWED_IPS_FILE, "w") as f:
             f.write('acl "allowed_ips" {\n')
             for ip in ips:
-                f.write(f"    {ip};\n")
+                # Ensure each IP ends with a semicolon
+                if not ip.endswith(";"):
+                    ip += ";"
+                f.write(f"    {ip}\n")
             f.write("};\n")
         
+        # Restart the named service
         subprocess.run(["sudo", "systemctl", "restart", "named"], check=True)
+        
+        # Reload the DNS forwarder configuration
+        subprocess.run(["sudo", "dnsforwarder", "restart"], check=True)
+        
         return jsonify({"message": "Allowed IPs updated successfully"})
+    except subprocess.CalledProcessError as e:
+        return jsonify({"error": f"Failed to update Allowed IPs: {e.stderr}"}), 500
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
 @app.route("/api/toggle", methods=["POST"])
 def toggle_service():
