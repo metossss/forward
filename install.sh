@@ -144,6 +144,45 @@ disable_ip_limit() {
     echo "BIND9 service restarted."
 }
 
+uninstall_dns_forwarder() {
+    echo "Uninstalling DNS forwarder..."
+
+    # Stop and disable services
+    sudo systemctl stop dns-panel
+    sudo systemctl disable dns-panel
+    sudo systemctl stop named
+    sudo systemctl disable named
+
+    # Remove configuration files
+    sudo rm -f /etc/bind/named.conf.options
+    sudo rm -f /etc/bind/allowed-ips.acl
+    sudo rm -f /usr/local/bin/dnsforwarder
+    sudo rm -f /etc/systemd/system/dns-panel.service
+
+    # Remove web panel
+    sudo rm -rf /opt/dns-panel
+
+    # Remove cloned repository
+    sudo rm -rf /opt/dnsforwarder
+
+    # Restore original named.conf if backup exists
+    if [ -f /etc/bind/named.conf.backup ]; then
+        sudo mv /etc/bind/named.conf.backup /etc/bind/named.conf
+    fi
+
+    # Remove added line from /etc/hosts
+    sudo sed -i "/127.0.0.1 $(hostname)/d" /etc/hosts
+
+    echo "DNS forwarder has been completely uninstalled."
+    
+    read -p "Do you want to reboot the system now? (y/n): " choice
+    case "\$choice" in 
+        y|Y ) sudo reboot ;;
+        n|N ) echo "Please remember to reboot your system later for changes to take full effect." ;;
+        * ) echo "Invalid input. Please reboot your system manually later." ;;
+    esac
+}
+
 case "\$1" in
     start)
         sudo systemctl start named
@@ -213,8 +252,11 @@ case "\$1" in
             exit 1
         fi
         ;;
+    uninstall)
+        uninstall_dns_forwarder
+        ;;
     *)
-        echo "Usage: dnsforwarder {start|stop|restart|status|set {shekan|radar|anti403|custom}|allow <ip>|deny <ip>|list|enable iplimit|disable iplimit}"
+        echo "Usage: dnsforwarder {start|stop|restart|status|set {shekan|radar|anti403|custom}|allow <ip>|deny <ip>|list|enable iplimit|disable iplimit|uninstall}"
         exit 1
         ;;
 esac
@@ -300,6 +342,8 @@ echo "  dnsforwarder disable iplimit    # To disable IP restriction"
 echo "  dnsforwarder allow <ip>         # To add an IP to the allowed list"
 echo "  dnsforwarder deny <ip>          # To remove an IP from the allowed list"
 echo "  dnsforwarder list               # To list allowed IPs"
+echo "To uninstall DNS forwarder completely, use:"
+echo "  dnsforwarder uninstall"
 
 # Verify that dnsforwarder command is working
 if ! command_exists dnsforwarder; then
