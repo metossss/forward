@@ -86,9 +86,10 @@ def set_dns():
 
     mode = request.json["mode"]
     if mode == "custom":
-        custom_dns = request.json.get("custom_dns", "")
-        if not custom_dns:
-            return jsonify({"error": "Custom DNS servers are required"}), 400
+        primary_dns = request.json.get("primary_dns", "").strip()
+        secondary_dns = request.json.get("secondary_dns", "").strip()
+        if not primary_dns:
+            return jsonify({"error": "Primary DNS server is required"}), 400
         cmd = ["sudo", "dnsforwarder", "set", "custom"]
     else:
         cmd = ["sudo", "dnsforwarder", "set", mode]
@@ -96,7 +97,8 @@ def set_dns():
     try:
         if mode == "custom":
             process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            stdout, stderr = process.communicate(input=f"{custom_dns}\n")
+            input_data = f"{primary_dns}\n{secondary_dns}\n"
+            stdout, stderr = process.communicate(input=input_data)
         else:
             process = subprocess.run(cmd, capture_output=True, text=True, check=True)
             stdout, stderr = process.stdout, process.stderr
