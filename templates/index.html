@@ -332,9 +332,9 @@
 function setCustomDNS() {
     const primaryDNS = document.getElementById('primaryDNS').value.trim();
     const secondaryDNS = document.getElementById('secondaryDNS').value.trim();
-    const customDNS = [primaryDNS];
+    let customDNS = primaryDNS;
     if (secondaryDNS) {
-        customDNS.push(secondaryDNS);
+        customDNS += ', ' + secondaryDNS;
     }
 
     fetch('/api/set_dns', {
@@ -352,7 +352,7 @@ function setCustomDNS() {
         showMessage('success', 'Custom DNS set successfully');
     })
     .catch((error) => {
-        showMessage('error', error.message);
+        showMessage('error', 'Failed to set custom DNS: ' + error.message);
     });
 }
     function toggleIPRestriction() {
