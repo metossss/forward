@@ -37,6 +37,9 @@ def get_status():
     if "logged_in" not in session:
         return jsonify({"error": "Unauthorized"}), 401
 
+    # New parameter to control whether to include allowed IPs
+    include_allowed_ips = request.args.get('include_allowed_ips', 'true').lower() == 'true'
+
     try:
         status = subprocess.run(["systemctl", "is-active", "named"], capture_output=True, text=True).stdout.strip()
     except Exception:
@@ -57,20 +60,24 @@ def get_status():
     
     ip_restriction = "allow-query { allowed_ips; };" in config_content
     
-    with open(ALLOWED_IPS_FILE, "r") as f:
-        allowed_ips = [line.strip().rstrip(";") for line in f if line.strip() and not line.startswith("acl") and line.strip() != "}" and line.strip() != "{"]
-    
-    # Add a closing brace if it's not already there
-    if allowed_ips and allowed_ips[-1] != "}":
-        allowed_ips.append("}")
-
-    return jsonify({
+    response_data = {
         "status": status,
         "mode": mode,
         "dns_servers": dns_servers,
-        "ip_restriction": ip_restriction,
-        "allowed_ips": allowed_ips
-    })
+        "ip_restriction": ip_restriction
+    }
+
+    if include_allowed_ips:
+        with open(ALLOWED_IPS_FILE, "r") as f:
+            allowed_ips = [line.strip().rstrip(";") for line in f if line.strip() and not line.startswith("acl") and line.strip() != "}" and line.strip() != "{"]
+        
+        # Add a closing brace if it's not already there
+        if allowed_ips and allowed_ips[-1] != "}":
+            allowed_ips.append("}")
+        
+        response_data["allowed_ips"] = allowed_ips
+
+    return jsonify(response_data)
 
 @app.route("/api/set_dns", methods=["POST"])
 def set_dns():
