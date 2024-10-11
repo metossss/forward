@@ -332,15 +332,15 @@
 function setCustomDNS() {
     const primaryDNS = document.getElementById('primaryDNS').value.trim();
     const secondaryDNS = document.getElementById('secondaryDNS').value.trim();
-    let customDNS = primaryDNS;
-    if (secondaryDNS) {
-        customDNS += ', ' + secondaryDNS;
-    }
 
     fetch('/api/set_dns', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({mode: 'custom', custom_dns: customDNS})
+        body: JSON.stringify({
+            mode: 'custom', 
+            primary_dns: primaryDNS,
+            secondary_dns: secondaryDNS
+        })
     })
     .then(response => response.json())
     .then(data => {
