@@ -329,33 +329,32 @@
         document.getElementById('customDNSModal').style.display = 'none';
     }
 
-    function setCustomDNS() {
-        const primaryDNS = document.getElementById('primaryDNS').value;
-        const secondaryDNS = document.getElementById('secondaryDNS').value;
-        const customDNS = [primaryDNS];
-        if (secondaryDNS) {
-            customDNS.push(secondaryDNS);
-        }
-
-        fetch('/api/set_dns', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({mode: 'custom', custom_dns: customDNS})
-        })
-        .then(response => {
-            if(response.ok){
-                updateStatus();
-                hideCustomDNSModal();
-                showMessage('success', 'Custom DNS set successfully');
-            } else {
-                showMessage('error', 'Failed to set custom DNS');
-            }
-        })
-        .catch(() => {
-            showMessage('error', 'An error occurred while setting custom DNS');
-        });
+function setCustomDNS() {
+    const primaryDNS = document.getElementById('primaryDNS').value.trim();
+    const secondaryDNS = document.getElementById('secondaryDNS').value.trim();
+    const customDNS = [primaryDNS];
+    if (secondaryDNS) {
+        customDNS.push(secondaryDNS);
     }
 
+    fetch('/api/set_dns', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({mode: 'custom', custom_dns: customDNS})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        updateStatus();
+        hideCustomDNSModal();
+        showMessage('success', 'Custom DNS set successfully');
+    })
+    .catch((error) => {
+        showMessage('error', error.message);
+    });
+}
     function toggleIPRestriction() {
         fetch('/api/toggle_ip_restriction', {
             method: 'POST'
