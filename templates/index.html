@@ -230,6 +230,8 @@
     </div>
 
 <script>
+     let allowedIPsData = '';
+
     function showMessage(type, text) {
         const messageDiv = document.getElementById('message');
         messageDiv.className = 'message ' + type;
@@ -270,11 +272,14 @@
                     ipRestrictionToggle.className = 'ip-restriction-inactive';
                 }
 
-                let allowedIPs = data.allowed_ips.join('\n');
-                if (allowedIPs.endsWith('}')) {
-                    allowedIPs = allowedIPs.slice(0, -1);
+                if (JSON.stringify(data.allowed_ips) !== JSON.stringify(allowedIPsData)) {
+                    allowedIPsData = data.allowed_ips;
+                    let allowedIPs = allowedIPsData.join('\n');
+                    if (allowedIPs.endsWith('}')) {
+                        allowedIPs = allowedIPs.slice(0, -1);
+                    }
+                    document.getElementById('allowed_ips').value = allowedIPs;
                 }
-                document.getElementById('allowed_ips').value = allowedIPs;
             });
     }
 
@@ -377,6 +382,7 @@
         })
         .then(response => response.json())
         .then(data => {
+            allowedIPsData = ips;
             updateStatus();
             showMessage('success', 'Allowed IPs updated successfully');
         })
