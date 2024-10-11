@@ -76,18 +76,28 @@ def set_dns():
     mode = request.json["mode"]
     if mode == "custom":
         custom_dns = request.json.get("custom_dns", [])
-        if not custom_dns:
+        if not custom_dns or len(custom_dns) == 0:
             return jsonify({"error": "Custom DNS servers are required"}), 400
-        dns_servers = "; ".join(custom_dns)
-        cmd = f"set custom << EOF\n{dns_servers}\n\nEOF"
+        dns_servers = " ".join(custom_dns)
+        cmd = ["sudo", "dnsforwarder", "set", "custom"]
     else:
-        cmd = f"set {mode}"
+        cmd = ["sudo", "dnsforwarder", "set", mode]
 
     try:
-        result = subprocess.run(["sudo", "dnsforwarder"] + cmd.split(), capture_output=True, text=True, check=True)
+        if mode == "custom":
+            process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout, stderr = process.communicate(input=f"{dns_servers}\n\n")
+        else:
+            process = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            stdout, stderr = process.stdout, process.stderr
+
+        if process.returncode != 0:
+            return jsonify({"error": f"Failed to set DNS: {stderr}"}), 500
         return jsonify({"message": f"DNS set to {mode} mode successfully"})
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Failed to set DNS: {e.stderr}"}), 500
+    except Exception as e:
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
 @app.route("/api/toggle_ip_restriction", methods=["POST"])
 def toggle_ip_restriction():
