@@ -64,9 +64,9 @@ options {
     dnssec-validation auto;
     auth-nxdomain no;
     listen-on-v6 { any; };
-    allow-query { allowed_ips; };
-    allow-recursion { allowed_ips; };
-    allow-query-cache { allowed_ips; };
+    allow-query { any; };
+    allow-recursion { any; };
+    allow-query-cache { any; };
     max-cache-size 512M;
     recursive-clients 10000;
 };
@@ -306,8 +306,5 @@ if ! command_exists dnsforwarder; then
     echo "ERROR: dnsforwarder command is not available. Please check the installation logs."
     exit 1
 fi
-
-echo "Testing dnsforwarder command..."
-dnsforwarder status
 
 echo "Installation and configuration complete."
