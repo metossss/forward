@@ -97,16 +97,16 @@ def set_dns():
     try:
         if mode == "custom":
             process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            stdout, stderr = process.communicate(input=f"{dns_servers}\n\n")
+            stdout, stderr = process.communicate(input=f"{dns_servers}\n")
         else:
             process = subprocess.run(cmd, capture_output=True, text=True, check=True)
             stdout, stderr = process.stdout, process.stderr
 
         if process.returncode != 0:
-            return jsonify({"error": f"Failed to set DNS: {stderr}"}), 500
+            return jsonify({"error": f"Failed to set DNS: {stderr.strip()}"}), 500
         return jsonify({"message": f"DNS set to {mode} mode successfully"})
     except subprocess.CalledProcessError as e:
-        return jsonify({"error": f"Failed to set DNS: {e.stderr}"}), 500
+        return jsonify({"error": f"Failed to set DNS: {e.stderr.strip()}"}), 500
     except Exception as e:
         return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
