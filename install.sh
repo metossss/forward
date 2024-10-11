@@ -7,6 +7,20 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# New variables for GitHub repository
+REPO_URL="https://github.com/smaghili/dnsforwarder.git"
+INSTALL_DIR="/opt/dnsforwarder"
+
+# New function to clone or update the repository
+setup_dns_proxy() {
+    if [ ! -d "$INSTALL_DIR" ]; then
+        sudo git clone "$REPO_URL" "$INSTALL_DIR"
+    else
+        (cd "$INSTALL_DIR" && sudo git pull)
+    fi
+    echo "DNS Forwarder repository setup completed."
+}
+
 # Remove old files and configurations
 sudo rm -f /usr/local/bin/dnsforwarder
 sudo rm -f /etc/bind/named.conf.options
@@ -18,6 +32,9 @@ sudo apt-get install -y bind9 bind9utils bind9-doc python3 python3-pip git
 
 # Install Flask
 sudo pip3 install flask
+
+# Clone or update the repository
+setup_dns_proxy
 
 # Add hostname to /etc/hosts
 echo "127.0.0.1 $(hostname)" | sudo tee -a /etc/hosts
@@ -54,29 +71,6 @@ options {
     recursive-clients 10000;
 };
 EOF'
-
-# New method to clone or update the repository
-REPO_URL="https://github.com/smaghili/dnsforwarder.git"
-INSTALL_DIR="/opt/dnsforwarder"
-SCRIPT_PATH="/usr/local/bin/dnsforwarder"
-
-# Function to clone or update the repository and set up the script
-setup_dns_proxy() {
-    if [ ! -d "$INSTALL_DIR" ]; then
-        sudo git clone "$REPO_URL" "$INSTALL_DIR"
-    else
-        (cd "$INSTALL_DIR" && sudo git pull)
-    fi
-    sudo cp "$INSTALL_DIR/dns_proxy.py" "$SCRIPT_PATH"
-    sudo chmod +x "$SCRIPT_PATH"
-    echo "DNS Forwarder repository setup completed."
-}
-
-# Call the setup function
-setup_dns_proxy
-
-# The rest of the script remains unchanged
-# ...
 
 # Create the dnsforwarder control script
 sudo bash -c 'cat > /usr/local/bin/dnsforwarder << EOF
@@ -245,7 +239,7 @@ ADMIN_USERNAME = '$ADMIN_USERNAME'
 ADMIN_PASSWORD = '$ADMIN_PASSWORD'
 EOF"
 
-# Copy existing web panel files
+# Copy web panel files from the cloned repository
 sudo cp $INSTALL_DIR/webpanel.py /opt/dns-panel/
 sudo mkdir -p /opt/dns-panel/templates
 sudo cp $INSTALL_DIR/templates/index.html /opt/dns-panel/templates/
